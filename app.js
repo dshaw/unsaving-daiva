@@ -22,7 +22,7 @@ app.configure(function() {
   app.use(connect.conditionalGet());
   app.use(connect.gzip());
   app.use(connect.bodyDecoder());
-  app.use(connect.logger());
+//  app.use(connect.logger());
 });
 
 app.configure('development', function() {
@@ -31,7 +31,29 @@ app.configure('development', function() {
 
 app.listen(parseInt(process.env.PORT) || 8000);
 
-
 app.get('/', function(req, res) {
   res.render('index');
+});
+
+
+wss.on("connection", function(connection){
+  connection.send("helo:"+connection.id);
+  
+  connection.on("message", function(data){
+    console.log(data);
+    
+    var action, x, y, id;
+    data = data.split(":");
+    if(data.length >= 2){
+      action = data[0];
+      switch(action.toUpperCase()){
+        case "HELO":
+          connection.broadcast("join:"+data[1]);
+          break;
+        case "MOVE":
+          connection.broadcast(data.join(":"))
+          break;
+      }
+    }
+  });
 });
