@@ -1,8 +1,10 @@
+var nws = require("websocket-server");
 
-var express = require("express");
-var http = require("http");
+var app = require('express').createServer();
+var ws = nws.createServer({
+  server: app
+});
 
-http.createServer(function(req, res){
-  res.writeHead(200, {});
-  res.end("done.");
-}).listen(80);
+app.listen(80);
+
+require("./routes");
