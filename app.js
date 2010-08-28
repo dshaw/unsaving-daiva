@@ -7,4 +7,7 @@ var ws = nws.createServer({
 
 app.listen(80);
 
+exports.app = app;
+exports.ws = ws;
+
 require("./routes");
