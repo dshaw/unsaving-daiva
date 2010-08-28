@@ -1,7 +1,7 @@
 var nws = require("websocket-server")
-  , connect = require('connect');
-  , assetManager = require('connect-assetmanager');
-  , assetHandler = require('connect-assetmanager-handlers');
+  , connect = require('connect')
+  , assetManager = require('connect-assetmanager')
+  , assetHandler = require('connect-assetmanager-handlers')
   , express = require('express');
 
 var app = exports.app = require('express').createServer();
