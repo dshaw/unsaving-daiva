@@ -82,7 +82,8 @@ app = {
   init: function(){
     var w = doc.width()
       , h = doc.height()
-      , c = this.canvas = Raphael(0, 0, w, h);
+      , c = this.canvas = Raphael(0, 0, w, h)
+      , s = this;
 
     qevent.add(document, "click", this.hitch("moveEvent"));
     qevent.add(document, "keypress", this.hitch("onKey"));
@@ -90,7 +91,8 @@ app = {
     qevent.add(window, "unload", this.hitch("onClose"));
 
     this.socket = new socket(function(err){
-      if(err) c.text(w/2, h/2, "Sorry, but you don't seem to have websockets.");
+      if(err) c.text(w/2, h/2, "Sorry, but you don't seem to have websockets."); return;
+      s["player"] && s.player.remove();
     });
     this.socket.onMessage = this.hitch("onMessage");
     
