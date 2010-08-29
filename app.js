@@ -51,7 +51,7 @@ wss.on("connection", function(connection){
       , x = mc.storage.get("x")
       , y = mc.storage.get("y")
       , color = mc.storage.get("color");
-    wss.broadcast("move:"+[id, x, y, color].join(","));
+    if(id) wss.broadcast("move:"+[id, x, y, color].join(","));
   });
     
   connection.on("message", function(data){

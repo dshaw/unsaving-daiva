@@ -86,7 +86,7 @@ app = {
       , s = this;
 
     qevent.add(document, "click", this.hitch("moveEvent"));
-    qevent.add(document, "keypress", this.hitch("onKey"));
+    qevent.add(document, "keydown", this.hitch("onKey"));
     qevent.add(window, "resize", this.hitch("onResize"));
     qevent.add(window, "unload", this.hitch("onClose"));
 
@@ -169,12 +169,14 @@ app = {
     
     if(typeof id == "string") id = this.getPlayer(id);
     
+    console.log(id, x, y);
+    
     if(id){
       var color = id.attr("fill").substr(-6)
-      app.socket.send("move", [x, y, color]);
+      app.socket.send("move", [Math.floor(x), Math.floor(y), color]);
       id.stop().animate({
-        cx: x,
-        cy: y
+        cx: Math.floor(x),
+        cy: Math.floor(y)
       }, 100, "linear");
     }
   },
@@ -201,8 +203,8 @@ app = {
   },
 
   onMessage: function(action, data){
-    var center_x = 0.5*doc.width()
-      , center_y = 0.5*doc.height();
+    var center_x = doc.width() / 2
+      , center_y = doc.height() / 2;
     
     switch(action.toLowerCase()){
       case "hello":
@@ -242,6 +244,25 @@ app = {
   },
   
   onKey: function(e){
-    console.log(e);
+    var key = e.key;
+    this.player.stop();
+    var curPos = [Math.floor(this.player.attr("cx")), Math.floor(this.player.attr("cy"))];
+    
+    console.log(key, curPos);
+    
+    switch(key){
+    case "up":
+      this.movePlayer(this.player, curPos[0], curPos[1]-20)
+      break;
+    case "down":
+      this.movePlayer(this.player, curPos[0], curPos[1]+20)
+      break;
+    case "left":
+      this.movePlayer(this.player, curPos[0]-20, curPos[1])
+      break;
+    case "right":
+      this.movePlayer(this.player, curPos[0]+20, curPos[1]);
+      break;
+    }
   }
 };
