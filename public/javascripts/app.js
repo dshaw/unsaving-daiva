@@ -5,11 +5,6 @@ qevent.add(document, "domready", function(){
   app.init();
 });
 
-
-// Raphael.fn.circlePath = function(x , y, r) {
-//   return this.path("M" + x + "," + (y-r) + "A"+r+","+r+",0,1,1,"+(x-0.1)+","+(y-r)+" z");
-// };
-
 var doc = {
   height: function(){
     var D = document;
@@ -30,66 +25,6 @@ var doc = {
   }
 };
 
-var easing = {
-  bounceIn: function(/* Decimal? */n){
-    // summary:
-    //    An easing function that 'bounces' near the beginning of an Animation
-    return (1 - dojo.fx.easing.bounceOut(1 - n)); // Decimal
-  },
-
-  bounceOut: function(/* Decimal? */n){
-    // summary:
-    //    An easing function that 'bounces' near the end of an Animation
-    var s = 7.5625;
-    var p = 2.75;
-    var l;
-    if(n < (1 / p)){
-      l = s * Math.pow(n, 2);
-    }else if(n < (2 / p)){
-      n -= (1.5 / p);
-      l = s * Math.pow(n, 2) + .75;
-    }else if(n < (2.5 / p)){
-      n -= (2.25 / p);
-      l = s * Math.pow(n, 2) + .9375;
-    }else{
-      n -= (2.625 / p);
-      l = s * Math.pow(n, 2) + .984375;
-    }
-    return l;
-  },
-
-  bounceInOut: function(/* Decimal? */n){
-    // summary:
-    //    An easing function that 'bounces' at the beginning and end of the Animation
-    if(n < 10){ return this.bounceIn(n * 2) / 2; }
-    return (this.bounceOut(n * 2 - 1) / 2) + 0.5; // Decimal
-  },
-  elasticInOut: function(/* Decimal? */n){
-    // summary:
-    //    An easing function that elasticly snaps around the value, near
-    //    the beginning and end of the Animation.
-    //
-    // description:
-    //    An easing function that elasticly snaps around the value, near
-    //    the beginning and end of the Animation.
-    //
-    //    Use caution when the elasticity will cause values to become
-    //    negative as some properties cannot be set to negative values.
-    if(n == 0) return 0;
-    n = n * 2;
-    if(n == 2) return 1;
-    var p =  1.5;
-    var s = p / 4;
-    console.log(n);
-    if(n < 10){
-      n -= 1;
-      return -.5 * (Math.pow(2, 10 * n) * Math.sin((n - s) * (2 * Math.PI) / p));
-    }
-    n -= 1;
-    return .5 * (Math.pow(2, -10 * n) * Math.sin((n - s) * (2 * Math.PI) / p)) + 1;
-  },
-};
-
 var root = this;
 var socket = function(callback){
   if("WebSocket" in root){
@@ -104,7 +39,9 @@ var socket = function(callback){
     };
     
     this.send = function(action, data){
-      console.log(">>"+action+":"+self.id+(data ? ","+data.join(",") : ""));
+      if(typeof data == "string" || typeof data == "number") data = [data];
+      
+      console.log(self.id+">>"+action+":"+self.id+(data ? ","+data.join(",") : ""));
       self.ws.send(action+":"+self.id+(data ? ","+data.join(",") : ""));
     };
 
@@ -145,7 +82,7 @@ app = {
   init: function(){
     var w = doc.width()
       , h = doc.height()
-      , c = this.canvas = Raphael(0, 60, w, h-60);
+      , c = this.canvas = Raphael(0, 0, w, h);
 
     qevent.add(document, "click", this.hitch("moveEvent"));
     qevent.add(document, "keydown", this.hitch("onkeydown"));
@@ -157,6 +94,12 @@ app = {
       if(err) c.text(w/2, h/2, "Sorry, but you don't seem to have websockets.");
     });
     this.socket.onMessage = this.hitch("onMessage");
+    
+    c.text(w/2, h/2, "Unsaving Daiva").attr({
+      stroke: "#333",
+      fill: "#333",
+      "font-size": "70px"
+    });
   },
 
   hitch: function(method){
@@ -168,16 +111,9 @@ app = {
 
 
   createPlayer: function(x, y, id){
-    var player = this.canvas.circle(x, y, 30).attr({
-      stroke: "#f800ff",
+    var player = this.canvas.circle(x, y, 15).attr({
+      stroke: "#ff00f8",
       id: id
-    });
-
-    player.onAnimation(function(){
-      var cx = player.attr("cx")
-        , cy = player.attr("cy");
-      
-      app.socket.send("move", [cx, cy]);
     });
 
     // player.onAnimation(function(){
@@ -215,24 +151,38 @@ app = {
     return this.players[id];
   },
   
+  getOrCreatePlayer: function(id){
+    return this.players[id] || this.addPlayer(id);
+  },
+  
   movePlayer: function(id, x, y){
     var w = doc.width()-30
-      , h = doc.height()-61;
+      , h = doc.height();
       
-    if(x <= 30) x = 30;
+    if(x <= 15) x = 15;
     if(x >= w) x = w;
 
-    if(y <= 30) y = 30;
-    if(y >= h-30) y = h-30;
+    if(y <= 15) y = 15;
+    if(y >= h-15) y = h;
     
     if(typeof id == "string") id = this.getPlayer(id);
     
     if(id){
+      app.socket.send("move", [x, y]);
       id.stop().animate({
         cx: x,
         cy: y
       }, 100, "linear");
     }
+  },
+  
+  setPlayerColour: function(id, colour){
+    if(!colour) colour = (Math.round(0xffffff * Math.random())-0x222222).toString(16).substr(-6);
+    
+    this.getOrCreatePlayer(id).attr({
+      stroke: "#fff",
+      fill: "#"+colour
+    });
   },
 
   onClose: function(){
@@ -240,38 +190,38 @@ app = {
   },
 
   onResize: function(){
-    var w = doc.width()
-      , h = doc.height()
+    var w = window.innerWidth
+      , h = window.innerHeight
+    
     this.canvas.setSize(w, h-60);
   },
 
   onMessage: function(action, data){
     var center_x = 0.5*doc.width()
       , center_y = 0.5*doc.height();
-
+    
+    console.log(this.socket.id, action, data);
+    
     switch(action.toUpperCase()){
       case "HELO":
-        var id = "player-"+data;
-        this.player = this.addPlayer(id);
+        this.socket.id = data;
+        this.player = this.addPlayer(data);
+        this.setPlayerColour(data)
+        this.socket.send("clr", this.player.attr("fill").substr(-6));
         this.movePlayer(this.player, center_x, center_y);
-        this.socket.id = id;
-        this.socket.send("helo");
-        break;
-      case "JOIN":
-        this.players[data] = this.createPlayer(center_x, center_y, data);
         break;
       case "MOVE":
         data = data.split(",");
         var id = data[0], x = data[1], y = data[2];
         if(id !== this.socket.id){
-          this.getPlayer(id).animate({
+          this.getOrCreatePlayer(id).animate({
             cx: x, cy: y
           }, 100);
         }
         break;
-      case "USERS":
-        
-        break;
+      case "CLR":
+        data = data.split(",");
+        this.setPlayerColour(data[0], data[1]);
       default:
         console.log(action,data);
         break;

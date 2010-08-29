@@ -37,36 +37,25 @@ app.get('/', function(req, res) {
 
 
 wss.on("connection", function(connection){
-  connection.send("helo:"+connection.id);
+  connection.send("helo:player-"+connection.id);
+  connection.storage.set("id", "player-"+connection.id);
   
   connection.on("message", function(data){
     console.log(data);
     
-    var action, x, y, id;
-    data = data.split(":");
-    if(data.length >= 2){
-      action = data[0];
-      switch(action.toUpperCase()){
-        case "HELO":
-          connection.broadcast("join:"+data[1]);
-          
-          var connections = [];
-          wss.manager.forEach(function(c){
-            if(c && c._state === 4 && c.id != connection.id){
-              connections.push([c.id, c.storage.get("x"), c.storage.get("y")].join(","));
-            }
-          });
-          
-          connection.send("users:"+connections.join(";"));
-          
-          break;
-        case "MOVE":
-          connection.broadcast("move:"+data[1])
-          var xy = data[1].split(",");
-          connection.storage.set("x", xy[0]);
-          connection.storage.set("y", xy[1]);
-          break;
-      }
+    parts = data.split(":");
+    action = parts[0];
+    args = parts[1].split(",");
+
+    switch(action.toUpperCase()){
+    case "MOVE":
+      connection.broadcast(data)
+      connection.storage.set("x", args[0]);
+      connection.storage.set("y", args[1]);
+      break;
+    case "CLR":
+      connection.broadcast(data);
+      connection.storage.set("colour", args[0])
     }
   });
 });
