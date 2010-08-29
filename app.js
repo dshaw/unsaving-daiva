@@ -10,7 +10,8 @@ app = express.createServer(
 );
 
 wss = nws.createServer({
-  server: app
+  server: app,
+  debug: true
 });
 
 app.configure(function() {
@@ -37,25 +38,40 @@ app.get('/', function(req, res) {
 
 
 wss.on("connection", function(connection){
-  connection.send("helo:player-"+connection.id);
-  connection.storage.set("id", "player-"+connection.id);
+  var color = (Math.round(0xffffff * Math.random())+0x222222)
+  if(color < 0) color = color*-1;
+  color = color.toString(16).substr(-6);
   
-  connection.on("message", function(data){
-    console.log(data);
+  connection.send("hello:player-"+connection.id+","+color);
+  connection.storage.set("color", color)
+  connection.storage.set("id", "player-"+connection.id);
+
+  wss.manager.forEach(function(mc){
+    var id = mc.storage.get("id")
+      , x = mc.storage.get("x")
+      , y = mc.storage.get("y")
+      , color = mc.storage.get("color");
+    wss.broadcast("move:"+[id, x, y, color].join(","));
+  });
     
+  connection.on("message", function(data){
     parts = data.split(":");
     action = parts[0];
     args = parts[1].split(",");
 
-    switch(action.toUpperCase()){
-    case "MOVE":
+    switch(action.toLowerCase()){
+    case "move":
       connection.broadcast(data)
       connection.storage.set("x", args[0]);
       connection.storage.set("y", args[1]);
+      connection.storage.set("color", args[2]);
       break;
-    case "CLR":
+    case "color":
       connection.broadcast(data);
-      connection.storage.set("colour", args[0])
+      connection.storage.set("color", args[0])
+    case "close":
+      connection.broadcast(data);
+      break;
     }
   });
 });

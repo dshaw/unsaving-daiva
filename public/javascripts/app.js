@@ -85,8 +85,7 @@ app = {
       , c = this.canvas = Raphael(0, 0, w, h);
 
     qevent.add(document, "click", this.hitch("moveEvent"));
-    qevent.add(document, "keydown", this.hitch("onkeydown"));
-    qevent.add(document, "keyup", this.hitch("onkeyup"));
+    qevent.add(document, "keypress", this.hitch("onKey"));
     qevent.add(window, "resize", this.hitch("onResize"));
     qevent.add(window, "unload", this.hitch("onClose"));
 
@@ -95,7 +94,7 @@ app = {
     });
     this.socket.onMessage = this.hitch("onMessage");
     
-    c.text(w/2, h/2, "Unsaving Daiva").attr({
+    this.text = c.text(w/2, h/2, "Unsaving Daiva").attr({
       stroke: "#333",
       fill: "#333",
       "font-size": "70px"
@@ -112,10 +111,11 @@ app = {
 
   createPlayer: function(x, y, id){
     var player = this.canvas.circle(x, y, 15).attr({
-      stroke: "#ff00f8",
-      id: id
+      id: id,
+      stroke: "#fff",
+      "stroke-width": "2px"
     });
-
+    
     // player.onAnimation(function(){
     //   var D = document;
     //   var cx = player.attr("cx")
@@ -140,7 +140,7 @@ app = {
   },
 
   moveEvent: function(e){
-    this.movePlayer(this.player, e.client.x+5, e.client.y-50);
+    this.movePlayer(this.player, Math.floor(e.client.x), Math.floor(e.client.y));
   },
 
   addPlayer: function(id){
@@ -168,7 +168,8 @@ app = {
     if(typeof id == "string") id = this.getPlayer(id);
     
     if(id){
-      app.socket.send("move", [x, y]);
+      var color = id.attr("fill").substr(-6)
+      app.socket.send("move", [x, y, color]);
       id.stop().animate({
         cx: x,
         cy: y
@@ -177,8 +178,7 @@ app = {
   },
   
   setPlayerColour: function(id, colour){
-    if(!colour) colour = (Math.round(0xffffff * Math.random())-0x222222).toString(16).substr(-6);
-    
+    if(!colour) return;
     this.getOrCreatePlayer(id).attr({
       stroke: "#fff",
       fill: "#"+colour
@@ -186,6 +186,7 @@ app = {
   },
 
   onClose: function(){
+    this.socket.send("close");
     this.socket.close();
   },
 
@@ -194,37 +195,51 @@ app = {
       , h = window.innerHeight
     
     this.canvas.setSize(w, h-60);
+    this.text.attr({x: w/2, y: h/2});
   },
 
   onMessage: function(action, data){
     var center_x = 0.5*doc.width()
       , center_y = 0.5*doc.height();
     
-    console.log(this.socket.id, action, data);
-    
-    switch(action.toUpperCase()){
-      case "HELO":
-        this.socket.id = data;
-        this.player = this.addPlayer(data);
-        this.setPlayerColour(data)
-        this.socket.send("clr", this.player.attr("fill").substr(-6));
+    switch(action.toLowerCase()){
+      case "hello":
+        data = data.split(",")
+        this.socket.id = data[0];
+        this.player = this.addPlayer(data[0]);
+        this.setPlayerColour(data[0], data[1]);
         this.movePlayer(this.player, center_x, center_y);
         break;
-      case "MOVE":
+      case "move":
         data = data.split(",");
-        var id = data[0], x = data[1], y = data[2];
+        var id = data[0], x = data[1], y = data[2], color = data[3] || false;
         if(id !== this.socket.id){
           this.getOrCreatePlayer(id).animate({
             cx: x, cy: y
           }, 100);
+          if(color)
+            this.getOrCreatePlayer(id).attr("fill", "#"+color);
         }
         break;
-      case "CLR":
+      case "color":
         data = data.split(",");
         this.setPlayerColour(data[0], data[1]);
+        break;
+      case "close":
+        var player = this.getPlayer(data);
+        if(player)
+          player.remove();
       default:
         console.log(action,data);
         break;
     }
+  },
+  
+  updateColor: function(){
+    this.socket.send("color", this.player.attr("fill").substr(-6));
+  },
+  
+  onKey: function(e){
+    console.log(e);
   }
 };
